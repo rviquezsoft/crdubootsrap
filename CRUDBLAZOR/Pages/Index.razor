@@ -1,0 +1,180 @@
+﻿@page "/"
+@inject IJSRuntime _js
+@inject List<Elemento> lista
+@inject Elemento _elemento
+@inject IFillMockData _fillMockData
+@inject ISwitchService _switch
+
+<div class="container">
+
+
+    @if (loading)
+    {
+        <div>
+            <h2>Cargando...</h2>
+        </div>
+    }
+    else
+    {
+        <div class="row m-2">
+            <h1>CRUD</h1>
+        </div>
+
+        <div class="row m-2">
+            <div class="col">
+                <button class="btn" style="background-color: #1CA5EA;color: white;" @onclick="@(async()=>await GetRow(null))">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="row m-2">
+            <table class="table">
+                <thead>
+                <th>ID</th>
+                <th>Descricpión</th>
+                <th>Activo</th>
+                <th>Fecha de Nacimiento</th>
+                <th>Acciones</th>
+                </thead>
+
+                <tbody>
+                    @foreach (var item in lista)
+                    {
+                        <tr>
+                            <td>@item.id</td>
+                            <td>@item.descripcion</td>
+                            <td>@item.activo</td>
+                            <td>@item.fecha</td>
+                            <td>
+                                <div>
+                                    <button class="btn" style="background-color: #341f97;color: white;"
+                                            @onclick="@(async()=>await GetRow(item))">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-danger"
+                                            @onclick="@(()=>DeleteRow(item))"
+                                            style="color: white; background-color: #b71540;"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+
+        @if (showModal)
+        {
+
+            <div class="modal" tabindex="-1" style="display: block;">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Crear Nuevo</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(() => { _switch.Switch(ref showModal);})"></button>
+                        </div>
+                        <div class="modal-body">
+
+                            <form class="row g-3 needs-validation" novalidate>
+
+                                <div class="col">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea class="form-control"
+                                              placeholder="Escriba la descripción"
+                                              id="floatingTextarea2" style="height: 100px" @bind="@_elemento.descripcion"></textarea>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="validationCustom03" class="form-label">Fecha de Nacimiento</label>
+                                    <input type="date" class="form-control" id="validationCustom03" @bind-value="@_elemento.fecha" required>
+
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               checked="@_elemento.activo" @bind-value="@_elemento.activo"
+                                               id="invalidCheck" required>
+                                        <label class="form-check-label">
+                                            Activo
+                                        </label>
+
+                                    </div>
+                                </div>
+
+                            </form>
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button"
+                                    class="btn btn-primary" @onclick="@(async()=>await SaveChanges())">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+
+</div>
+
+@code{
+    bool loading = false;
+    bool showModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _switch.Switch(ref loading);
+        lista.Clear();
+        lista=await _fillMockData.FillData();
+        resetElement();
+        _switch.Switch(ref loading);
+    }
+
+
+    async Task GetRow(Elemento elemento)
+    {
+        _elemento = elemento == null ? resetElement() : elemento;
+        await _js.InvokeVoidAsync("console.log", $"id={_elemento.id} " +
+                        $" descripción= {_elemento.descripcion} activo={_elemento.activo} fecha={_elemento.fecha}");
+        _switch.Switch(ref showModal);
+    }
+
+
+    void DeleteRow(Elemento elemento)
+    {
+        _switch.Switch(ref loading);
+        lista.Remove(elemento);
+        _switch.Switch(ref loading);
+    }
+
+
+    Elemento resetElement()
+    {
+        Elemento nuevo= new Elemento { id=lista.Count+1,activo = true, descripcion = "", fecha = DateTime.Now };
+        return nuevo;
+    }
+
+    async Task SaveChanges()
+    {
+        _switch.Switch(ref loading);
+        var element = lista.Where(x=>x.id==_elemento.id).FirstOrDefault();
+        //es nuevo
+        if (element==null||element.id<1)
+        {
+            if (_elemento.id<1||string.IsNullOrWhiteSpace(_elemento.descripcion))
+            {
+                _switch.Switch(ref showModal);
+                _switch.Switch(ref loading);
+                await _js.InvokeVoidAsync("alert","Por favor ingrese todos los datos del elemento");
+                return;
+            }
+            lista.Add(_elemento);
+        }
+        //es modificación
+        element = _elemento;
+        _switch.Switch(ref loading);
+        _switch.Switch(ref showModal);
+    }
+
+}
